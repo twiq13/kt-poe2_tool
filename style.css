@@ -1,0 +1,41 @@
+.layout {
+  display: flex;
+  gap: 20px;
+}
+
+.currency-panel {
+  width: 280px;
+  height: 300px;
+  overflow-y: auto;
+  background: #111;
+  padding: 10px;
+}
+
+.currency-item {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.currency-item img {
+  width: 24px;
+  height: 24px;
+}
+
+.loot-table {
+  width: 100%;
+}
+
+.loot-actions {
+  margin-top: 10px;
+}
+
+.currency-panel {
+  color: white;
+}
+
+.currency-item small {
+  margin-left: auto;
+  opacity: 0.7;
+}
