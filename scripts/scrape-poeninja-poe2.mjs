@@ -4,12 +4,12 @@ import { chromium } from "playwright";
 
 const LEAGUE = process.env.LEAGUE || "standard";
 const URL = `https://poe.ninja/poe2/economy/${LEAGUE}/currency`;
+const BASE = "https://poe.ninja";
 
 function cleanName(name) {
   return String(name || "").replace(/\s*WIKI\s*$/i, "").trim();
 }
 
-// "2.5k" => 2500, "800" => 800, "1.2" => 1.2
 function parseCompactNumber(s) {
   if (!s) return null;
   const t = String(s).trim().toLowerCase().replace(/,/g, ".");
@@ -20,6 +20,14 @@ function parseCompactNumber(s) {
   return Number.isFinite(n) ? n : null;
 }
 
+function normalizeUrl(u) {
+  if (!u) return "";
+  if (u.startsWith("http://") || u.startsWith("https://")) return u;
+  if (u.startsWith("//")) return "https:" + u;
+  if (u.startsWith("/")) return BASE + u;
+  return u;
+}
+
 (async () => {
   const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage({
@@ -28,20 +36,19 @@ function parseCompactNumber(s) {
   });
 
   console.log("Opening:", URL);
-
   await page.goto(URL, { waitUntil: "domcontentloaded", timeout: 60000 });
 
-  // Attendre que le tableau SPA se charge
   await page.waitForSelector("table thead th", { timeout: 60000 });
   await page.waitForSelector("table tbody tr", { timeout: 60000 });
-  await page.waitForTimeout(2500);
 
-  // Trouver l'index de la colonne "Value"
+  // Laisse le temps au lazy-load de remplir les images
+  await page.waitForTimeout(4000);
+
+  // index colonne Value
   const valueColIndex = await page.evaluate(() => {
     const ths = Array.from(document.querySelectorAll("table thead th"));
     return ths.findIndex(th => (th.innerText || "").trim().toLowerCase() === "value");
   });
-
   console.log("Value column index =", valueColIndex);
 
   if (valueColIndex < 0) {
@@ -50,24 +57,46 @@ function parseCompactNumber(s) {
     process.exit(1);
   }
 
-  // Extraire name + icon (col 0) + valueText + unitIcon + unitAlt
   const rows = await page.evaluate((valueIdx) => {
-    const trs = Array.from(document.querySelectorAll("table tbody tr"));
+    function bestImgUrl(img) {
+      if (!img) return "";
 
+      // Le plus fiable
+      let u = img.currentSrc || img.src || img.getAttribute("src") || "";
+
+      // Next/Image ou lazy
+      if (!u || u === "about:blank") {
+        u = img.getAttribute("data-src") || img.getAttribute("data-lazy-src") || "";
+      }
+
+      // srcset: prend le 1er url
+      if ((!u || u === "about:blank") && img.getAttribute("srcset")) {
+        const ss = img.getAttribute("srcset").split(",")[0]?.trim();
+        u = ss ? ss.split(" ")[0] : "";
+      }
+
+      return u || "";
+    }
+
+    const trs = Array.from(document.querySelectorAll("table tbody tr"));
     return trs.slice(0, 500).map(tr => {
       const tds = Array.from(tr.querySelectorAll("td"));
       if (tds.length <= valueIdx) return null;
 
       const name = (tds[0]?.innerText || "").replace(/\s+/g, " ").trim();
 
-      const itemImg = tds[0]?.querySelector("img");
-      const icon = itemImg?.getAttribute("src") || itemImg?.src || "";
+      // colonne 0: souvent plusieurs images (logo + WIKI)
+      const imgs0 = Array.from(tds[0].querySelectorAll("img"));
+      // on prend le premier "vrai" logo (souvent le 1er)
+      const icon = bestImgUrl(imgs0[0]) || bestImgUrl(imgs0[1]) || "";
 
       const valueTd = tds[valueIdx];
       const valueText = (valueTd?.innerText || "").replace(/\s+/g, " ").trim();
 
-      const unitImg = valueTd?.querySelector("img");
-      const unitIcon = unitImg?.getAttribute("src") || unitImg?.src || "";
+      // Value column: on prend la dernière image (souvent l'unité)
+      const imgsV = Array.from(valueTd.querySelectorAll("img"));
+      const unitImg = imgsV.length ? imgsV[imgsV.length - 1] : null;
+      const unitIcon = bestImgUrl(unitImg);
 
       const unitAlt =
         unitImg?.getAttribute("alt") ||
@@ -93,16 +122,14 @@ function parseCompactNumber(s) {
       name: cleanName(r.name),
       amount,
       unit: cleanName(r.unitAlt || ""),
-      icon: r.icon || "",
-      unitIcon: r.unitIcon || ""
+      icon: normalizeUrl(r.icon || ""),
+      unitIcon: normalizeUrl(r.unitIcon || "")
     };
   }).filter(x => x.name && x.amount !== null);
 
-  if (!lines.length) {
-    console.error("Lignes trouvées mais aucun amount parsé.");
-    console.error("Exemple row:", rows[0]);
-    process.exit(1);
-  }
+  // Debug rapide : voir si on récupère des icônes
+  const withIcons = lines.filter(x => x.icon || x.unitIcon).length;
+  console.log(`Icons found: ${withIcons}/${lines.length}`);
 
   const out = {
     updatedAt: new Date().toISOString(),
