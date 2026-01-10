@@ -67,26 +67,47 @@ function extractIconNameFromHtml(html) {
   }
 
   // Extraire les lignes : name + HTML de la cellule Value
-  const rows = await page.evaluate((valueIdx) => {
-    const trs = Array.from(document.querySelectorAll("table tbody tr"));
-    return trs.slice(0, 400).map((tr) => {
-      const tds = Array.from(tr.querySelectorAll("td"));
-      const name = (tds[0]?.innerText || "").replace(/\s+/g, " ").trim();
-      const valueHtml = tds[valueIdx]?.innerHTML || "";
-      const valueText = (tds[valueIdx]?.innerText || "").replace(/\s+/g, " ").trim();
-      return { name, valueHtml, valueText };
-    }).filter(r => r.name);
-  }, valueColIndex);
+const rows = await page.evaluate((valueIdx) => {
+  const trs = Array.from(document.querySelectorAll("table tbody tr"));
+  return trs.slice(0, 400).map(tr => {
+    const tds = Array.from(tr.querySelectorAll("td"));
+    const name = (tds[0]?.innerText || "").replace(/\s+/g, " ").trim();
 
-  await browser.close();
+    // icône de l'item (dans la 1ère colonne)
+    const itemImg = tds[0]?.querySelector("img");
+    const icon = itemImg?.getAttribute("src") || itemImg?.src || "";
 
-  if (!rows.length) {
-    console.error("Aucune ligne trouvée dans le tableau.");
-    process.exit(1);
-  }
+    // cellule value
+    const valueTd = tds[valueIdx];
+    const valueText = (valueTd?.innerText || "").replace(/\s+/g, " ").trim();
 
-  // Parse rows -> {name, amount, unit}
-  const lines = rows.map((r) => {
+    // icône de l'unité de référence (dans la cellule value, à côté de la valeur)
+    const unitImg = valueTd?.querySelector("img");
+    const unitIcon = unitImg?.getAttribute("src") || unitImg?.src || "";
+
+    // essayer de récupérer alt/title de l'icône (nom de l'unité)
+    const unitAlt = unitImg?.getAttribute("alt") || unitImg?.getAttribute("title") || "";
+
+    return { name, icon, unitIcon, unitAlt, valueText };
+  }).filter(r => r.name);
+}, valueColIndex);
+
+
+  // Parse rows -> {name, amount, unit, img}
+  const lines = rows.map(r => {
+  const token = r.valueText.split(" ").find(x => /^[0-9]/.test(x)) || null;
+  const amount = parseCompactNumber(token);
+  const unit = r.unitAlt || null;
+
+  return {
+    name: cleanName(r.name),
+    amount,
+    unit,
+    icon: r.icon || "",
+    unitIcon: r.unitIcon || ""
+  };
+}).filter(x => x.amount !== null && x.name);
+
     // On prend en priorité innerText (plus fiable), sinon stripTags(html)
     const txt = r.valueText || stripTags(r.valueHtml);
 
