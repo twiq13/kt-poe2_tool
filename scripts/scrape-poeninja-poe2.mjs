@@ -2,8 +2,12 @@
 import fs from "fs";
 import { chromium } from "playwright";
 
-const LEAGUE = process.env.LEAGUE || "standard"; // ex: "vaal" ou "standard"
+const LEAGUE = process.env.LEAGUE || "standard";
 const URL = `https://poe.ninja/poe2/economy/${LEAGUE}/currency`;
+
+function cleanName(name) {
+  return String(name || "").replace(/\s*WIKI\s*$/i, "").trim();
+}
 
 // "2.5k" => 2500, "800" => 800, "1.2" => 1.2
 function parseCompactNumber(s) {
@@ -14,22 +18,6 @@ function parseCompactNumber(s) {
   let n = Number(m[1]);
   if (m[3]) n *= 1000;
   return Number.isFinite(n) ? n : null;
-}
-
-function stripTags(html) {
-  return String(html || "")
-    .replace(/<br\s*\/?>/gi, " ")
-    .replace(/<[^>]*>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
-
-// essaie de récupérer le nom de la currency du logo dans la cellule Value
-function extractIconNameFromHtml(html) {
-  // alt="Exalted Orb" / title="Divine Orb" etc.
-  const alt = html.match(/alt="([^"]+)"/i)?.[1];
-  const title = html.match(/title="([^"]+)"/i)?.[1];
-  return (alt || title || null);
 }
 
 (async () => {
@@ -43,90 +31,76 @@ function extractIconNameFromHtml(html) {
 
   await page.goto(URL, { waitUntil: "domcontentloaded", timeout: 60000 });
 
-  // Attendre que le tableau SPA se charge vraiment
+  // Attendre que le tableau SPA se charge
   await page.waitForSelector("table thead th", { timeout: 60000 });
   await page.waitForSelector("table tbody tr", { timeout: 60000 });
   await page.waitForTimeout(2500);
 
-  // Trouver l’index de la colonne "Value"
+  // Trouver l'index de la colonne "Value"
   const valueColIndex = await page.evaluate(() => {
     const ths = Array.from(document.querySelectorAll("table thead th"));
-    const idx = ths.findIndex(
-      (th) => (th.innerText || "").trim().toLowerCase() === "value"
-    );
-    return idx;
+    return ths.findIndex(th => (th.innerText || "").trim().toLowerCase() === "value");
   });
 
   console.log("Value column index =", valueColIndex);
 
   if (valueColIndex < 0) {
     console.error('Impossible de trouver la colonne "Value".');
-    process.exitCode = 1;
     await browser.close();
-    return;
+    process.exit(1);
   }
 
-  // Extraire les lignes : name + HTML de la cellule Value
-const rows = await page.evaluate((valueIdx) => {
-  const trs = Array.from(document.querySelectorAll("table tbody tr"));
-  return trs.slice(0, 400).map(tr => {
-    const tds = Array.from(tr.querySelectorAll("td"));
-    const name = (tds[0]?.innerText || "").replace(/\s+/g, " ").trim();
+  // Extraire name + icon (col 0) + valueText + unitIcon + unitAlt
+  const rows = await page.evaluate((valueIdx) => {
+    const trs = Array.from(document.querySelectorAll("table tbody tr"));
 
-    // icône de l'item (dans la 1ère colonne)
-    const itemImg = tds[0]?.querySelector("img");
-    const icon = itemImg?.getAttribute("src") || itemImg?.src || "";
+    return trs.slice(0, 500).map(tr => {
+      const tds = Array.from(tr.querySelectorAll("td"));
+      if (tds.length <= valueIdx) return null;
 
-    // cellule value
-    const valueTd = tds[valueIdx];
-    const valueText = (valueTd?.innerText || "").replace(/\s+/g, " ").trim();
+      const name = (tds[0]?.innerText || "").replace(/\s+/g, " ").trim();
 
-    // icône de l'unité de référence (dans la cellule value, à côté de la valeur)
-    const unitImg = valueTd?.querySelector("img");
-    const unitIcon = unitImg?.getAttribute("src") || unitImg?.src || "";
+      const itemImg = tds[0]?.querySelector("img");
+      const icon = itemImg?.getAttribute("src") || itemImg?.src || "";
 
-    // essayer de récupérer alt/title de l'icône (nom de l'unité)
-    const unitAlt = unitImg?.getAttribute("alt") || unitImg?.getAttribute("title") || "";
+      const valueTd = tds[valueIdx];
+      const valueText = (valueTd?.innerText || "").replace(/\s+/g, " ").trim();
 
-    return { name, icon, unitIcon, unitAlt, valueText };
-  }).filter(r => r.name);
-}, valueColIndex);
+      const unitImg = valueTd?.querySelector("img");
+      const unitIcon = unitImg?.getAttribute("src") || unitImg?.src || "";
 
+      const unitAlt =
+        unitImg?.getAttribute("alt") ||
+        unitImg?.getAttribute("title") ||
+        "";
 
-  // Parse rows -> {name, amount, unit, img}
+      return { name, icon, valueText, unitIcon, unitAlt };
+    }).filter(Boolean);
+  }, valueColIndex);
+
+  await browser.close();
+
+  if (!rows.length) {
+    console.error("Aucune ligne trouvée dans le tableau.");
+    process.exit(1);
+  }
+
   const lines = rows.map(r => {
-  const token = r.valueText.split(" ").find(x => /^[0-9]/.test(x)) || null;
-  const amount = parseCompactNumber(token);
-  const unit = r.unitAlt || null;
-
-  return {
-    name: cleanName(r.name),
-    amount,
-    unit,
-    icon: r.icon || "",
-    unitIcon: r.unitIcon || ""
-  };
-}).filter(x => x.amount !== null && x.name);
-
-    // On prend en priorité innerText (plus fiable), sinon stripTags(html)
-    const txt = r.valueText || stripTags(r.valueHtml);
-
-    // Trouver le premier token qui ressemble à un nombre (ex: "2.5k" / "800" / "5.3")
-    const token = txt.split(" ").find((x) => /^[0-9]/.test(x)) || null;
+    const token = r.valueText.split(" ").find(x => /^[0-9]/.test(x)) || null;
     const amount = parseCompactNumber(token);
 
-    const unit = extractIconNameFromHtml(r.valueHtml); // peut être null si pas d'alt/title
-
     return {
-      name: r.name,
+      name: cleanName(r.name),
       amount,
-      unit,
+      unit: cleanName(r.unitAlt || ""),
+      icon: r.icon || "",
+      unitIcon: r.unitIcon || ""
     };
-  }).filter(x => x.amount !== null);
+  }).filter(x => x.name && x.amount !== null);
 
   if (!lines.length) {
-    console.error("Lignes trouvées mais aucun montant parsé.");
-    console.error("Exemple:", rows[0]);
+    console.error("Lignes trouvées mais aucun amount parsé.");
+    console.error("Exemple row:", rows[0]);
     process.exit(1);
   }
 
@@ -134,7 +108,7 @@ const rows = await page.evaluate((valueIdx) => {
     updatedAt: new Date().toISOString(),
     league: LEAGUE,
     source: URL,
-    lines,
+    lines
   };
 
   fs.mkdirSync("data", { recursive: true });
