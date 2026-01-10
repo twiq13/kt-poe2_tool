@@ -1,19 +1,11 @@
-// =======================
-// PoE2 Farm Calculette - FINAL (GitHub Pages + prices.json)
-// =======================
+let currencies = [];
+let currencyMap = new Map();      // nameLower -> currency
+let exaltRates = new Map();       // nameLower -> value in Exalted Orb
+let baseName = "Exalted Orb";     // currency de référence affichée
+let baseIcon = "";               // icône exalt
 
-let currencies = [];          // [{name, amount, unit}, ...] depuis data/prices.json
-let currencyMap = new Map();  // nameLower -> currency object
-
-// ---------- utils ----------
 function cleanName(name) {
   return String(name || "").replace(/\s*WIKI\s*$/i, "").trim();
-}
-
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, m => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"
-  }[m]));
 }
 
 function setStatus(msg) {
@@ -27,16 +19,16 @@ function setText(id, value) {
   if (el) el.textContent = value;
 }
 
-function num(id) {
+function numInput(id) {
   const el = document.getElementById(id);
   if (!el) return 0;
   const v = Number(el.value);
   return Number.isFinite(v) ? v : 0;
 }
 
-// =======================
-// CHARGEMENT PRICES.JSON
-// =======================
+// -----------------------
+// LOAD prices.json
+// -----------------------
 async function loadCurrencies() {
   try {
     setStatus("Fetch status: lecture data/prices.json...");
@@ -47,24 +39,77 @@ async function loadCurrencies() {
     currencies = (data.lines || []).map(c => ({
       name: cleanName(c.name),
       amount: Number(c.amount || 0),
-      unit: c.unit || ""
+      unit: c.unit || "",
+      icon: c.icon || "",
+      unitIcon: c.unitIcon || ""
     }));
 
     currencyMap = new Map(currencies.map(c => [c.name.toLowerCase(), c]));
 
-    setStatus(`Fetch status: OK ✅ currencies=${currencies.length} (maj: ${data.updatedAt || "?"})`);
+    // trouver l'icône exalt si dispo
+    const exalt = currencyMap.get(baseName.toLowerCase());
+    baseIcon = exalt?.icon || exalt?.unitIcon || "";
 
+    // construire les conversions vers Exalted
+    buildExaltRates();
+
+    setStatus(`Fetch status: OK ✅ currencies=${currencies.length} (maj: ${data.updatedAt || "?"})`);
     renderCurrencyPanel();
     fillDatalist();
+    refreshAllLootPrices();  // recalcul après load
+    calculerTout();
 
   } catch (e) {
     setStatus("Fetch status: ERREUR ❌ " + e.toString());
   }
 }
 
-// =======================
-// AFFICHAGE COLONNE GAUCHE + recherche
-// =======================
+// -----------------------
+// Build conversion graph to Exalted
+// Each row means: 1 "name" = amount * "unit"
+// -----------------------
+function buildExaltRates() {
+  exaltRates = new Map();
+  const start = baseName.toLowerCase();
+  exaltRates.set(start, 1);
+
+  // edges
+  // A -> B with mult m : 1A = m B
+  const list = currencies
+    .filter(x => x.name && x.unit && x.amount > 0)
+    .map(x => ({
+      A: x.name.toLowerCase(),
+      B: cleanName(x.unit).toLowerCase(),
+      m: x.amount
+    }));
+
+  // BFS propagation
+  let changed = true;
+  for (let iter = 0; iter < 50 && changed; iter++) {
+    changed = false;
+
+    for (const e of list) {
+      const a = exaltRates.get(e.A);
+      const b = exaltRates.get(e.B);
+
+      // if B known => A = m * B
+      if (b !== undefined && a === undefined) {
+        exaltRates.set(e.A, e.m * b);
+        changed = true;
+      }
+
+      // if A known => B = (1/m) * A
+      if (a !== undefined && b === undefined) {
+        exaltRates.set(e.B, (1 / e.m) * a);
+        changed = true;
+      }
+    }
+  }
+}
+
+// -----------------------
+// LEFT panel
+// -----------------------
 function renderCurrencyPanel() {
   const panel = document.getElementById("currencyList");
   if (!panel) return;
@@ -85,18 +130,20 @@ function renderCurrencyPanel() {
     const div = document.createElement("div");
     div.className = "currency-item";
     div.style.cursor = "pointer";
+
     div.innerHTML = `
-      <span>${escapeHtml(c.name)}</span>
-      <small>${c.amount} ${escapeHtml(c.unit)}</small>
+      <span style="display:flex;gap:8px;align-items:center;">
+        ${c.icon ? `<img src="${c.icon}" style="width:18px;height:18px;">` : ""}
+        ${c.name}
+      </span>
+      <small>${c.amount} ${c.unit || ""}</small>
     `;
+
     div.addEventListener("click", () => addLootLineWithName(c.name));
     panel.appendChild(div);
   });
 }
 
-// =======================
-// DATALIST (autocomplete loot)
-// =======================
 function fillDatalist() {
   const dl = document.getElementById("currencyDatalist");
   if (!dl) return;
@@ -109,31 +156,32 @@ function fillDatalist() {
   });
 }
 
-// =======================
-// AJOUT LIGNE LOOT (auto)
-// =======================
+// -----------------------
+// LOOT rows
+// -----------------------
 function addLootLine() {
   const tr = document.createElement("tr");
   tr.className = "lootRow";
 
   tr.innerHTML = `
     <td>
-      <input class="lootItem" list="currencyDatalist" placeholder="Item">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <input class="lootItem" list="currencyDatalist" placeholder="Item">
+        <img class="lootIcon" style="width:18px;height:18px;display:none;" alt="">
+      </div>
     </td>
-    <td class="price lootPrice">0</td>
-    <td>
-      <input class="lootQty" type="number" value="0" min="0">
+    <td class="priceCell">
+      <span class="lootPrice">0</span>
+      <img class="baseIcon" style="width:16px;height:16px;margin-left:6px;vertical-align:middle;display:none;" alt="">
     </td>
-    <td>
-      <button type="button" class="deleteBtn" title="Supprimer">✖</button>
-    </td>
+    <td><input class="lootQty" type="number" value="0" min="0"></td>
+    <td><button type="button" class="deleteBtn" title="Supprimer">✖</button></td>
   `;
 
   document.getElementById("lootBody").appendChild(tr);
 
   const itemInput = tr.querySelector(".lootItem");
   const qtyInput = tr.querySelector(".lootQty");
-  const delBtn = tr.querySelector(".deleteBtn");
 
   itemInput.addEventListener("input", () => {
     updatePrice(itemInput);
@@ -145,11 +193,20 @@ function addLootLine() {
     saveState();
   });
 
-  delBtn.addEventListener("click", () => {
+  tr.querySelector(".deleteBtn").addEventListener("click", () => {
     tr.remove();
     calculerTout();
     saveState();
   });
+
+  // mettre l'icône de base (exalt) dans la cellule prix
+  const baseImg = tr.querySelector(".baseIcon");
+  if (baseIcon) {
+    baseImg.src = baseIcon;
+    baseImg.style.display = "inline-block";
+  } else {
+    baseImg.style.display = "none";
+  }
 
   return tr;
 }
@@ -162,9 +219,6 @@ function addLootLineWithName(name) {
   saveState();
 }
 
-// =======================
-// LIGNE MANUELLE
-// =======================
 function addManualLine() {
   const tr = document.createElement("tr");
   tr.className = "lootRow manualRow";
@@ -199,48 +253,65 @@ function addManualLine() {
   return tr;
 }
 
-// =======================
-// MISE À JOUR PRIX (auto depuis prices.json)
-// =======================
+// Convert any currency to Exalted using rates graph
+function getPriceInExalted(nameLower) {
+  // If we know rate directly: 1 name = rate Exalted
+  const r = exaltRates.get(nameLower);
+  return (r !== undefined) ? r : null;
+}
+
 function updatePrice(input) {
-  const name = (input.value || "").trim().toLowerCase();
+  const name = (input.value || "").trim();
+  const nameLower = name.toLowerCase();
   const row = input.closest("tr");
 
-  // manuel => pas d'auto
   if (row.classList.contains("manualRow")) {
     calculerTout();
     return;
   }
 
-  const priceCell = row.querySelector(".lootPrice");
-  const found = currencyMap.get(name);
+  const priceEl = row.querySelector(".lootPrice");
+  const iconEl = row.querySelector(".lootIcon");
 
-  if (found) {
-    priceCell.textContent = Number(found.amount || 0).toFixed(2);
-    priceCell.dataset.unit = found.unit || "";
+  const found = currencyMap.get(nameLower);
+
+  // icon item
+  if (found?.icon) {
+    iconEl.src = found.icon;
+    iconEl.style.display = "inline-block";
   } else {
-    priceCell.textContent = "0";
-    priceCell.dataset.unit = "";
+    iconEl.style.display = "none";
+  }
+
+  // price in Exalted
+  const ex = getPriceInExalted(nameLower);
+
+  if (ex !== null) {
+    priceEl.textContent = Number(ex).toFixed(2);
+  } else {
+    priceEl.textContent = "0";
   }
 
   calculerTout();
 }
 
-// =======================
-// CALCULS (Invest + Loot + Gains)
-// =======================
+function refreshAllLootPrices() {
+  document.querySelectorAll("#lootBody tr").forEach(tr => {
+    if (tr.classList.contains("manualRow")) return;
+    const inp = tr.querySelector(".lootItem");
+    if (inp) updatePrice(inp);
+  });
+}
 
+// -----------------------
+// CALCULS
+// -----------------------
 function calculerInvest() {
-  // Base simple: somme des inputs (en "chaos" pour le moment)
-  // Tu pourras remplacer par tes formules Excel quand tu veux.
-  const totalChaos =
-    num("maps") +
-    num("invest_tablets") +
-    num("invest_omen") +
-    num("invest_maps");
-
-  setText("totalInvest", totalChaos.toFixed(2));
-  return totalChaos;
+  const maps = numInput("maps");
+  const costPerMap = numInput("costPerMap"); // en EXALTED
+  const total = maps * costPerMap;
+  setText("totalInvest", total.toFixed(2));
+  return total;
 }
 
 function calculerLoot() {
@@ -269,13 +340,12 @@ function calculerTout() {
   const invest = calculerInvest();
   const loot = calculerLoot();
   const gains = loot - invest;
-
   setText("gain", gains.toFixed(2));
 }
 
-// =======================
-// LOCALSTORAGE
-// =======================
+// -----------------------
+// STORAGE
+// -----------------------
 function saveState() {
   const rows = [...document.querySelectorAll("#lootBody tr")].map(r => {
     const isManual = r.classList.contains("manualRow");
@@ -289,9 +359,7 @@ function saveState() {
 
   const invest = {
     maps: document.getElementById("maps")?.value ?? "",
-    invest_tablets: document.getElementById("invest_tablets")?.value ?? "",
-    invest_omen: document.getElementById("invest_omen")?.value ?? "",
-    invest_maps: document.getElementById("invest_maps")?.value ?? ""
+    costPerMap: document.getElementById("costPerMap")?.value ?? ""
   };
 
   localStorage.setItem("poe2FarmState", JSON.stringify({ rows, invest }));
@@ -309,7 +377,6 @@ function loadState() {
   try {
     const state = JSON.parse(raw);
 
-    // restore invest
     if (state?.invest) {
       Object.keys(state.invest).forEach(k => {
         const el = document.getElementById(k);
@@ -336,18 +403,16 @@ function loadState() {
     });
 
     calculerTout();
-  } catch {
-    // ignore
-  }
+  } catch {}
 }
 
-// =======================
-// RESET TEMPLATE (tout vide + 1 ligne)
-// =======================
+// -----------------------
+// RESET TEMPLATE
+// -----------------------
 function resetAll() {
   localStorage.removeItem("poe2FarmState");
 
-  ["maps", "invest_tablets", "invest_omen", "invest_maps"].forEach(id => {
+  ["maps", "costPerMap"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = "";
   });
@@ -367,30 +432,25 @@ function resetAll() {
 }
 window.resetAll = resetAll;
 
-// =======================
-// INIT + EVENTS
-// =======================
+// -----------------------
+// INIT
+// -----------------------
 document.addEventListener("DOMContentLoaded", () => {
-  // recherche colonne gauche
   const search = document.getElementById("currencySearch");
   if (search) search.addEventListener("input", renderCurrencyPanel);
 
-  // recalcul invest sur saisie
-  ["maps", "invest_tablets", "invest_omen", "invest_maps"].forEach(id => {
+  ["maps", "costPerMap"].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener("input", () => { calculerTout(); saveState(); });
   });
 
-  // boutons
   window.addLootLine = addLootLine;
   window.addManualLine = addManualLine;
   window.loadCurrencies = loadCurrencies;
 
-  // init data
   loadCurrencies();
   loadState();
 
   if (!document.querySelector("#lootBody tr")) addLootLine();
-
   calculerTout();
 });
