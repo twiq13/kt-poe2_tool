@@ -5,9 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>PoE2 Farm Calculator</title>
   <link rel="stylesheet" href="style.css?v=999">
-  <script src="app.js?v=999"></script>
-
-
 </head>
 
 <body>
@@ -56,16 +53,24 @@
     <aside class="left-panel">
       <div class="panel-title">Market List</div>
 
-      <!-- TABS (preparing future types) -->
+      <!-- TABS -->
       <div class="tabs">
         <button class="tab active" data-tab="currency">Currency</button>
         <button class="tab" data-tab="fragments">Fragments</button>
-        <button class="tab" data-tab="abyssal">Abyssal Bones</button>
-        <button class="tab" data-tab="other">Other</button>
+        <button class="tab" data-tab="abyssalBones">Abyssal Bones</button>
+        <button class="tab" data-tab="uncutGems">Uncut Gems</button>
+        <button class="tab" data-tab="lineageGems">Lineage Gems</button>
+        <button class="tab" data-tab="essences">Essences</button>
+        <button class="tab" data-tab="soulCores">Soul Cores</button>
+        <button class="tab" data-tab="idols">Idols</button>
+        <button class="tab" data-tab="runes">Runes</button>
+        <button class="tab" data-tab="omens">Omens</button>
+        <button class="tab" data-tab="expedition">Expedition</button>
+        <button class="tab" data-tab="liquidEmotions">Liquid Emotions</button>
+        <button class="tab" data-tab="catalyst">Catalyst</button>
       </div>
 
       <input id="currencySearch" placeholder="Search..." />
-
       <div id="currencyList"></div>
     </aside>
 
@@ -101,8 +106,7 @@
 
   <div id="fetchStatus" class="status">Status: waiting...</div>
 
-  <script src="app.js?v=8"></script>
+  <!-- ✅ Load JS ONCE, at the end -->
+  <script src="app.js?v=999"></script>
 </body>
 </html>
-
-
