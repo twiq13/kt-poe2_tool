@@ -270,7 +270,12 @@ function updatePrice(input) {
     return;
   }
 
-  const priceEl = row.querySelector(".lootPrice");
+if (found) {
+  priceEl.textContent = Number(found.exaltedValue || 0).toFixed(2);
+} else {
+  priceEl.textContent = "0";
+}
+
   const iconEl = row.querySelector(".lootIcon");
 
   const found = currencyMap.get(nameLower);
@@ -463,4 +468,5 @@ baseIcon = data.baseIcon || "";
   if (!document.querySelector("#lootBody tr")) addLootLine();
   calculerTout();
 });
+
 
