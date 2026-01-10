@@ -41,6 +41,11 @@ button:hover { background-color: #444; }
 
 .invest-row input { width: 170px; }
 
+.priceCell { text-align: center; }
+.lootIcon { filter: drop-shadow(0 0 2px rgba(0,0,0,.6)); }
+.baseIcon { filter: drop-shadow(0 0 2px rgba(0,0,0,.6)); }
+
+
 /* =======================
    LAYOUT PRINCIPAL
 ======================= */
@@ -192,3 +197,4 @@ button:hover { background-color: #444; }
   border-radius: 8px;
   border: 1px solid #333;
 }
+
