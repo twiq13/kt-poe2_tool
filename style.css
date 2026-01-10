@@ -177,8 +177,8 @@ button:hover{ background:#2f2f2f; }
   gap:8px;
 }
 .cIcon{
-  width:18px;
-  height:18px;
+  width:6px;
+  height:6px;
   filter: drop-shadow(0 0 2px rgba(0,0,0,.6));
 }
 
@@ -240,15 +240,15 @@ button:hover{ background:#2f2f2f; }
 
 /* Item icon inside loot */
 .lootIcon{
-  width:18px;
-  height:18px;
+  width:8px;
+  height:8px;
   display:none;
   filter: drop-shadow(0 0 2px rgba(0,0,0,.6));
 }
 
 .baseIcon{
-  width:16px;
-  height:16px;
+  width:6px;
+  height:6px;
   margin-left:6px;
   vertical-align:middle;
   display:none;
@@ -265,4 +265,5 @@ button:hover{ background:#2f2f2f; }
   color:#00ff66;
   white-space:pre-wrap;
 }
+
 
