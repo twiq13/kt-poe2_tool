@@ -1,5 +1,167 @@
 {
-  "updatedAt": null,
+  "updatedAt": "2026-01-10T16:56:29.086Z",
   "league": "standard",
-  "lines": []
+  "source": "https://poe.ninja/poe2/economy/standard/currency",
+  "lines": [
+    {
+      "name": "Mirror of Kalandra WIKI",
+      "amount": 2600,
+      "unit": "Divine Orb"
+    },
+    {
+      "name": "Hinekora's Lock WIKI",
+      "amount": 800,
+      "unit": "Divine Orb"
+    },
+    {
+      "name": "Perfect Chaos Orb WIKI",
+      "amount": 5.2,
+      "unit": "Divine Orb"
+    },
+    {
+      "name": "Fracturing Orb WIKI",
+      "amount": 1.9,
+      "unit": "Divine Orb"
+    },
+    {
+      "name": "Perfect Exalted Orb WIKI",
+      "amount": 1.5,
+      "unit": "Divine Orb"
+    },
+    {
+      "name": "Divine Orb WIKI",
+      "amount": 32,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Orb of Annulment WIKI",
+      "amount": 13,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Greater Chaos Orb WIKI",
+      "amount": 3.4,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Perfect Regal Orb WIKI",
+      "amount": 3.2,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Perfect Jeweller's Orb WIKI",
+      "amount": 2.9,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Greater Jeweller's Orb WIKI",
+      "amount": 2,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Perfect Orb of Augmentation WIKI",
+      "amount": 1.5,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Gemcutter's Prism WIKI",
+      "amount": 1,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Glassblower's Bauble WIKI",
+      "amount": 1,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Chaos Orb WIKI",
+      "amount": 1,
+      "unit": "Divine Orb"
+    },
+    {
+      "name": "Orb of Chance WIKI",
+      "amount": 1,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Arcanist's Etcher WIKI",
+      "amount": 1,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Greater Exalted Orb WIKI",
+      "amount": 1,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Perfect Orb of Transmutation WIKI",
+      "amount": 1,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Greater Regal Orb WIKI",
+      "amount": 1,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Armourer's Scrap WIKI",
+      "amount": 1,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Artificer's Orb WIKI",
+      "amount": 1,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Blacksmith's Whetstone WIKI",
+      "amount": 1,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Orb of Alchemy WIKI",
+      "amount": 1,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Greater Orb of Augmentation WIKI",
+      "amount": 1,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Vaal Orb WIKI",
+      "amount": 1,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Chance Shard WIKI",
+      "amount": 1,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Exalted Orb WIKI",
+      "amount": 1,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Regal Orb WIKI",
+      "amount": 1,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Lesser Jeweller's Orb WIKI",
+      "amount": 1,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Scroll of Wisdom WIKI",
+      "amount": 1,
+      "unit": "Chaos Orb"
+    },
+    {
+      "name": "Orb of Augmentation WIKI",
+      "amount": 1,
+      "unit": "Chaos Orb"
+    }
+  ]
 }
