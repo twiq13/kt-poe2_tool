@@ -3,80 +3,29 @@ name: Update PoE2 prices
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/30 * * * *"
+    - cron: "0 */6 * * *" # toutes les 6h
+
+permissions:
+  contents: write
 
 jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Fetch PoE2 currency JSON (diagnostic)
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Fetch + build prices.json
+        run: node scripts/update-prices.mjs
+
+      - name: Commit & push if changed
         run: |
-          LEAGUE="Standard"
-          URL="https://poe.ninja/poe2/api/data/currencyoverview?league=${LEAGUE}&type=Currency"
-          echo "Fetching: $URL"
-
-          for i in 1 2 3 4 5; do
-            echo "Attempt $i..."
-
-            HTTP_CODE=$(curl -L --retry 3 --retry-all-errors --connect-timeout 15 --max-time 30 \
-              -A "Mozilla/5.0" -H "Accept: application/json" \
-              -sS -w "%{http_code}" -o /tmp/raw.json "$URL" || echo "curl_failed")
-
-            SIZE=$(wc -c < /tmp/raw.json || echo 0)
-            echo "HTTP code: $HTTP_CODE | Downloaded bytes: $SIZE"
-
-            if [ "$SIZE" -gt 200 ]; then
-              break
-            fi
-
-            sleep 3
-          done
-
-          echo "First 300 chars:"
-          head -c 300 /tmp/raw.json || true
-          echo ""
-
-          node -e "
-          const fs = require('fs');
-          const rawText = (fs.readFileSync('/tmp/raw.json','utf8') || '').trim();
-
-          if (!rawText || rawText.length < 200) {
-            console.log('Response too small -> no update');
-            process.exit(0);
-          }
-
-          let raw;
-          try { raw = JSON.parse(rawText); }
-          catch(e){ console.log('JSON parse failed -> no update'); process.exit(0); }
-
-          const out = {
-            updatedAt: new Date().toISOString(),
-            league: '${LEAGUE}',
-            lines: raw.lines || []
-          };
-
-          if (!out.lines.length) {
-            console.log('Parsed OK but lines empty -> no update');
-            process.exit(0);
-          }
-
-          fs.mkdirSync('data',{recursive:true});
-          fs.writeFileSync('data/prices.json', JSON.stringify(out,null,2));
-          console.log('prices.json updated with', out.lines.length, 'items');
-          "
-
-
-
-
-
-
-      - name: Commit changes
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git config user.name "poe2-price-bot"
+          git config user.email "actions@users.noreply.github.com"
           git add data/prices.json
-          git commit -m 'Update prices.json' || exit 0
-          git push
+          git diff --staged --quiet || (git commit -m "Update PoE2 prices" && git push)
