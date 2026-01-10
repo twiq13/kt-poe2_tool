@@ -12,7 +12,7 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-           - name: Fetch PoE2 currency JSON
+      - name: Fetch PoE2 currency JSON
         run: |
           LEAGUE="standard"
           URL="https://poe.ninja/poe2/api/data/currencyoverview?league=${LEAGUE}&type=Currency"
@@ -37,6 +37,7 @@ jobs:
           fs.writeFileSync('data/prices.json', JSON.stringify(out,null,2));
           console.log('prices.json updated with', out.lines.length, 'items');
           "
+
 
 
       - name: Commit changes
