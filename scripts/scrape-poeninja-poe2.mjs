@@ -5,7 +5,7 @@ import { chromium } from "playwright";
 const LEAGUE = (process.env.LEAGUE || "vaal").toLowerCase();
 const BASE = "https://poe.ninja";
 
-// All sections you want (id = your app tab id, slug = poe.ninja URL slug)
+// Sections -> slug poe.ninja
 const SECTIONS = [
   { id: "currency", label: "Currency", slug: "currency" },
   { id: "fragments", label: "Fragments", slug: "fragments" },
@@ -19,24 +19,22 @@ const SECTIONS = [
   { id: "omens", label: "Omens", slug: "omens" },
   { id: "expedition", label: "Expedition", slug: "expedition" },
   { id: "liquidEmotions", label: "Liquid Emotions", slug: "liquid-emotions" },
-  { id: "catalyst", label: "Catalyst", slug: "breach-catalyst" },
+  { id: "catalyst", label: "Catalyst", slug: "breach-catalyst" }
 ];
 
-// --- helpers ---
-function normalizeUrl(u) {
+function normalizeUrl(u){
   if (!u) return "";
   if (u.startsWith("http://") || u.startsWith("https://")) return u;
   if (u.startsWith("//")) return "https:" + u;
-  if (u.startsWith("/")) return BASE + u;
+  if (u.startsWith("/")) return "https://poe.ninja" + u;
   return u;
 }
 
-function cleanName(name) {
-  return String(name || "").replace(/\s*WIKI\s*$/i, "").trim();
+function cleanName(s){
+  return String(s || "").replace(/\s*WIKI\s*$/i, "").trim();
 }
 
-// "3.2k" "2416.67" "86k" "1.0" -> number
-function parseCompactNumber(s) {
+function parseCompactNumber(s){
   if (!s) return null;
   const t = String(s).trim().toLowerCase().replace(/,/g, ".");
   const m = t.match(/^([0-9]+(\.[0-9]+)?)(k|m)?$/i);
@@ -47,88 +45,76 @@ function parseCompactNumber(s) {
   return Number.isFinite(n) ? n : null;
 }
 
-// extract the first numeric token from a text chunk
-function firstNumberToken(txt) {
-  if (!txt) return null;
-  const cleaned = String(txt).replace(/\s+/g, " ").trim();
-  // match numbers like 2416.67 or 3.2k or 86k
-  const m = cleaned.match(/([0-9]+(?:[.,][0-9]+)?(?:k|m)?)/i);
-  return m ? m[1] : null;
-}
-
-async function scrapeSection(page, section) {
+async function scrapeSection(page, section){
   const url = `${BASE}/poe2/economy/${LEAGUE}/${section.slug}?value=exalted`;
   console.log(`=== Section: ${section.label} -> ${url}`);
 
-  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 90000 });
-
-  await page.waitForSelector("table thead th", { timeout: 90000 });
-  await page.waitForSelector("table tbody tr", { timeout: 90000 });
-
-  // Small pause for client-rendered table stabilization
+  await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60000 });
+  await page.waitForSelector("table thead th", { timeout: 60000 });
+  await page.waitForSelector("table tbody tr", { timeout: 60000 });
   await page.waitForTimeout(1200);
 
-  const data = await page.evaluate(() => {
-    const norm = (u) => {
-      if (!u) return "";
-      if (u.startsWith("http://") || u.startsWith("https://")) return u;
-      if (u.startsWith("//")) return "https:" + u;
-      if (u.startsWith("/")) return "https://poe.ninja" + u;
-      return u;
-    };
-
+  // find "Value" column
+  const valueColIndex = await page.evaluate(() => {
     const ths = Array.from(document.querySelectorAll("table thead th"));
-    const valueIdx = ths.findIndex(th => (th.textContent || "").trim().toLowerCase() === "value");
-    const rows = Array.from(document.querySelectorAll("table tbody tr"));
+    return ths.findIndex(th => (th.innerText || "").trim().toLowerCase() === "value");
+  });
 
+  if (valueColIndex < 0) {
+    console.log("!! Value column not found, skipping");
+    return [];
+  }
+
+  // extract rows in one evaluate (fast)
+  const rows = await page.evaluate((valueColIndex) => {
     const out = [];
-    for (const tr of rows) {
+    const trs = Array.from(document.querySelectorAll("table tbody tr"));
+    for (const tr of trs) {
       const tds = Array.from(tr.querySelectorAll("td"));
-      if (!tds.length || valueIdx < 0 || !tds[valueIdx]) continue;
+      if (!tds.length || tds.length <= valueColIndex) continue;
 
-      const nameRaw = (tds[0].textContent || "").replace(/\s+/g, " ").trim();
-      const name = nameRaw.replace(/\s*WIKI\s*$/i, "").trim();
-      if (!name) continue;
+      const nameTd = tds[0];
+      const nameText = (nameTd.innerText || "").replace(/\s+/g, " ").trim();
+      const img = nameTd.querySelector("img");
+      const icon = img ? img.getAttribute("src") : "";
 
-      const itemImg = tds[0].querySelector("img");
-      const icon = itemImg ? norm(itemImg.getAttribute("src") || "") : "";
+      const valueTd = tds[valueColIndex];
+      const valueText = (valueTd.innerText || "").replace(/\s+/g, " ").trim();
 
-      const valueCell = tds[valueIdx];
+      // valueText looks like: "2416.67" or "260k" etc (with icons nearby)
+      const token = valueText.split(" ").find(x => /^[0-9]/.test(x)) || null;
 
-      // In ?value=exalted, value cell should contain ONE value (exalted)
-      // We grab first numeric token from textContent.
-      const txt = (valueCell.textContent || "").replace(/\s+/g, " ").trim();
-      const m = txt.match(/([0-9]+(?:[.,][0-9]+)?(?:k|m)?)/i);
-      const token = m ? m[1] : null;
+      // unit icon = first img inside the value cell (exalted icon when value=exalted)
+      const unitImg = valueTd.querySelector("img");
+      const unitIcon = unitImg ? unitImg.getAttribute("src") : "";
 
-      // unit icon = first icon found in value cell (usually exalted icon)
-      const unitImg = valueCell.querySelector("img");
-      const unitIcon = unitImg ? norm(unitImg.getAttribute("src") || "") : "";
-
-      out.push({ name, icon, token, unitIcon });
+      out.push({
+        nameText,
+        icon,
+        token,
+        unitIcon
+      });
     }
+    return out;
+  }, valueColIndex);
 
-    return { valueIdx, rowsCount: rows.length, out };
-  });
+  const out = [];
+  for (const r of rows) {
+    const name = cleanName(r.nameText);
+    if (!name) continue;
 
-  // Convert tokens into numbers
-  const lines = data.out.map(x => {
-    const numToken = firstNumberToken(x.token);
-    const exaltedValue = parseCompactNumber(numToken);
-    return {
+    out.push({
       section: section.id,
-      name: cleanName(x.name),
-      icon: normalizeUrl(x.icon),
-      exaltedValue: exaltedValue ?? null,
+      name,
+      icon: normalizeUrl(r.icon),
+      amount: parseCompactNumber(r.token) ?? 0,    // ✅ EXALTED value
       unit: "Exalted Orb",
-      unitIcon: normalizeUrl(x.unitIcon),
-    };
-  });
+      unitIcon: normalizeUrl(r.unitIcon),
+    });
+  }
 
-  const kept = lines.filter(l => l.exaltedValue !== null).length;
-  console.log(`Done: rows=${data.rowsCount} kept=${kept}`);
-
-  return { url, lines };
+  console.log(`Done: rows=${rows.length} kept=${out.length}`);
+  return out;
 }
 
 (async () => {
@@ -139,37 +125,30 @@ async function scrapeSection(page, section) {
   });
 
   let all = [];
-  let sources = {};
-
-  for (const section of SECTIONS) {
-    const { url, lines } = await scrapeSection(page, section);
-    sources[section.id] = url;
+  for (const sec of SECTIONS) {
+    const lines = await scrapeSection(page, sec);
     all = all.concat(lines);
   }
 
-  await browser.close();
-
-  // Find Divine Orb rate in Exalted (this is your key reference for UI conversions)
-  const divine = all.find(x => x.section === "currency" && x.name.toLowerCase() === "divine orb");
-  const divineInEx = divine?.exaltedValue ?? null;
-
-  // Find Exalted Orb icon as baseIcon (prefer currency exalted orb row icon)
-  const exRow = all.find(x => x.section === "currency" && x.name.toLowerCase() === "exalted orb");
-  const baseIcon = exRow?.icon || all.find(x => x.unitIcon)?.unitIcon || "";
+  // base icon: from Exalted Orb line (best)
+  const exLine = all.find(x => x.name.toLowerCase() === "exalted orb");
+  const baseIcon = exLine?.icon || "";
 
   const out = {
     updatedAt: new Date().toISOString(),
     league: LEAGUE,
+    source: `${BASE}/poe2/economy/${LEAGUE}`,
     base: "Exalted Orb",
     baseIcon,
-    divineInEx,            // ✅ 1 Divine = X Exalted (from value=exalted table)
-    sections: SECTIONS.map(s => ({ id: s.id, label: s.label, slug: s.slug, url: sources[s.id] })),
-    lines: all,
+    sections: SECTIONS.map(s => ({ id: s.id, label: s.label, slug: s.slug })),
+    lines: all
   };
 
   fs.mkdirSync("data", { recursive: true });
   fs.writeFileSync("data/prices.json", JSON.stringify(out, null, 2), "utf8");
 
-  console.log(`TOTAL sections=${SECTIONS.length} lines=${all.length}`);
-  console.log(`DivineInEx = ${divineInEx}`);
+  console.log(`TOTAL lines=${all.length}`);
+  const div = all.find(x => x.name.toLowerCase() === "divine orb");
+  console.log(`Divine Orb exaltedValue(amount) = ${div?.amount ?? "?"}`);
+  await browser.close();
 })();
