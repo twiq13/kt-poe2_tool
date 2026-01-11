@@ -1,18 +1,17 @@
 /* ===========================
-   PoE2 Farm Calculator - SAFE CORE
-   Prevents "innerHTML of null" crashes and logs missing IDs.
+   PoE2 Farm Calculator - SIMPLE STABLE CORE
+   - No "innerHTML of null"
+   - Tabs working
+   - Market list + loot + totals
    =========================== */
 
 let data = null;
 let items = [];
 let itemMap = new Map();
-
 let activeTab = "currency";
 
 // ---------- DOM helpers ----------
-function $(id) {
-  return document.getElementById(id);
-}
+function $(id) { return document.getElementById(id); }
 
 function setStatus(msg) {
   const el = $("fetchStatus");
@@ -20,23 +19,24 @@ function setStatus(msg) {
   console.log(msg);
 }
 
-function setHTML(id, html) {
+// Safe setters: never crash, never overwrite OK status repeatedly
+function safeSetText(id, txt) {
   const el = $(id);
   if (!el) {
-    setStatus(`Status: ERROR ❌ Missing element id="${id}" in index.html`);
-    return false;
-  }
-  el.innerHTML = html;
-  return true;
-}
-
-function setText(id, txt) {
-  const el = $(id);
-  if (!el) {
-    setStatus(`Status: ERROR ❌ Missing element id="${id}" in index.html`);
+    console.warn(`Missing element id="${id}"`);
     return false;
   }
   el.textContent = txt;
+  return true;
+}
+
+function safeSetHTML(id, html) {
+  const el = $(id);
+  if (!el) {
+    console.warn(`Missing element id="${id}"`);
+    return false;
+  }
+  el.innerHTML = html;
   return true;
 }
 
@@ -52,7 +52,7 @@ function escapeHtml(s) {
   }[m]));
 }
 
-// ---------- ensure required DOM exists ----------
+// ---------- required DOM check ----------
 function assertDom() {
   const required = [
     "fetchStatus",
@@ -63,10 +63,9 @@ function assertDom() {
     "currencyDatalist",
     "resetBtn"
   ];
-
   const missing = required.filter(id => !$(id));
   if (missing.length) {
-    setStatus(`Status: ERROR ❌ Missing IDs in HTML: ${missing.join(", ")}`);
+    setStatus(`Status: ERROR ❌ Missing IDs: ${missing.join(", ")}`);
     return false;
   }
   return true;
@@ -83,9 +82,12 @@ async function loadPrices() {
     items = Array.isArray(data?.lines) ? data.lines : [];
     itemMap = new Map(items.map(x => [String(x.name || "").toLowerCase(), x]));
 
-    setStatus(`Status: OK ✅ sections=${(data.sections?.length ?? "?")} items=${items.length}`);
+    const secCount = Array.isArray(data?.sections) ? data.sections.length : "?";
+    setStatus(`Status: OK ✅ sections=${secCount} items=${items.length}`);
   } catch (e) {
     setStatus("Status: ERROR ❌ " + e.toString());
+    items = [];
+    itemMap = new Map();
   }
 }
 
@@ -98,6 +100,18 @@ function bindTabs() {
       activeTab = btn.dataset.tab || "currency";
       renderMarketList();
     });
+  });
+}
+
+// ---------- datalist ----------
+function fillDatalist() {
+  const dl = $("currencyDatalist");
+  if (!dl) return;
+  dl.innerHTML = "";
+  items.forEach(x => {
+    const opt = document.createElement("option");
+    opt.value = x.name || "";
+    dl.appendChild(opt);
   });
 }
 
@@ -115,9 +129,9 @@ function renderMarketList() {
   }
 
   const filtered = items
-    .filter(x => (x.section || "currency") === activeTab)
+    .filter(x => String(x.section || "currency") === activeTab)
     .filter(x => String(x.name || "").toLowerCase().includes(q))
-    .slice(0, 300);
+    .slice(0, 400);
 
   if (!filtered.length) {
     panel.innerHTML = `<div style="color:#bbb;padding:10px;">No items.</div>`;
@@ -128,15 +142,15 @@ function renderMarketList() {
     const row = document.createElement("div");
     row.className = "currency-item";
 
-    const val = (x.exaltedValue ?? x.amount ?? 0);
-    const valTxt = Number.isFinite(val) ? String(val) : "0";
+    const val = Number(x.exaltedValue ?? x.amount ?? 0);
+    const valTxt = Number.isFinite(val) ? val.toFixed(2) : "0.00";
 
     row.innerHTML = `
       <div class="cLeft">
         ${x.icon ? `<img class="cIcon" src="${x.icon}" alt="">` : ""}
         <span>${escapeHtml(x.name || "")}</span>
       </div>
-      <small>${escapeHtml(valTxt)}</small>
+      <small>${valTxt}</small>
     `;
 
     row.addEventListener("click", () => addLootLineWithName(x.name));
@@ -144,25 +158,14 @@ function renderMarketList() {
   });
 }
 
-// ---------- datalist ----------
-function fillDatalist() {
-  const dl = $("currencyDatalist");
-  if (!dl) return;
-  dl.innerHTML = "";
-  items.forEach(x => {
-    const opt = document.createElement("option");
-    opt.value = x.name || "";
-    dl.appendChild(opt);
-  });
-}
-
 // ---------- loot ----------
 function addLootLine() {
   const body = $("lootBody");
-  if (!body) return;
+  if (!body) return null;
 
   const tr = document.createElement("tr");
   tr.className = "lootRow";
+
   tr.innerHTML = `
     <td>
       <div class="lootItemWrap">
@@ -189,9 +192,7 @@ function addLootLine() {
     recalcTotals();
   });
 
-  qtyInput.addEventListener("input", () => {
-    recalcTotals();
-  });
+  qtyInput.addEventListener("input", recalcTotals);
 
   tr.querySelector(".deleteBtn").addEventListener("click", () => {
     tr.remove();
@@ -215,6 +216,7 @@ function addManualLine() {
 
   const tr = document.createElement("tr");
   tr.className = "lootRow manualRow";
+
   tr.innerHTML = `
     <td><input class="lootItem" placeholder="Custom name"></td>
     <td><input class="manualPrice" type="number" value="0" min="0" step="0.01"></td>
@@ -250,9 +252,10 @@ function updateLootRow(tr) {
   }
 
   const ex = Number(found?.exaltedValue ?? 0);
-  priceEl.textContent = ex.toFixed(2);
+  priceEl.textContent = Number.isFinite(ex) ? ex.toFixed(2) : "0.00";
 }
 
+// ---------- totals ----------
 function calcInvest() {
   return num("maps") * num("costPerMap");
 }
@@ -261,6 +264,7 @@ function calcLoot() {
   let total = 0;
   document.querySelectorAll("#lootBody tr").forEach(tr => {
     const qty = Number(tr.querySelector(".lootQty")?.value || 0);
+
     if (tr.classList.contains("manualRow")) {
       const p = Number(tr.querySelector(".manualPrice")?.value || 0);
       total += p * qty;
@@ -277,10 +281,9 @@ function recalcTotals() {
   const loot = calcLoot();
   const gain = loot - invest;
 
-  // safe setters (won't crash)
-  setText("totalInvest", invest.toFixed(2));
-  setText("totalLoot", loot.toFixed(2));
-  setText("gain", gain.toFixed(2));
+  safeSetText("totalInvest", invest.toFixed(2));
+  safeSetText("totalLoot", loot.toFixed(2));
+  safeSetText("gain", gain.toFixed(2));
 }
 
 // ---------- reset ----------
@@ -288,16 +291,22 @@ function resetAll() {
   if ($("maps")) $("maps").value = "10";
   if ($("costPerMap")) $("costPerMap").value = "0";
   if ($("lootBody")) $("lootBody").innerHTML = "";
+
   addLootLine();
   recalcTotals();
+
   setStatus("Status: reset ✅");
 }
+
+// ✅ expose globals NOW (for HTML onclick)
+window.addLootLine = addLootLine;
+window.addManualLine = addManualLine;
+window.resetAll = resetAll;
 
 // ---------- init ----------
 document.addEventListener("DOMContentLoaded", async () => {
   if (!assertDom()) return;
 
-  // bind
   $("currencySearch").addEventListener("input", renderMarketList);
   $("maps").addEventListener("input", recalcTotals);
   $("costPerMap").addEventListener("input", recalcTotals);
@@ -305,16 +314,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   bindTabs();
 
-  // load
   await loadPrices();
   fillDatalist();
   renderMarketList();
 
-  // default row
   addLootLine();
   recalcTotals();
-
-  // expose buttons used in HTML onclick
-  window.addLootLine = addLootLine;
-  window.addManualLine = addManualLine;
 });
