@@ -11,6 +11,9 @@ let exaltIcon = "";
 let divineIcon = "";
 let divineExValue = null;    // 1 Divine = X Exalted (from prices.json)
 
+let lastEditedCost = "ex";   // "ex" | "div"
+let isSyncingCost = false;
+
 const SECTIONS = [
   { id:"currency", label:"Currency" },
   { id:"fragments", label:"Fragments" },
@@ -55,6 +58,32 @@ function fmt2(n){
   return x.toFixed(2);
 }
 
+function fmtDateTime(iso){
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return String(iso);
+  const pad = (x)=> String(x).padStart(2,"0");
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+}
+
+// --- display rule: if >= (1 Div + 1 Ex) => show in Div for user display
+function shouldShowDiv(exAmount){
+  if (!divineExValue || divineExValue <= 0) return false;
+  return Number(exAmount || 0) >= (divineExValue + 1);
+}
+
+function setDualPriceDisplay(valueEl, iconEl, exAmount){
+  const ex = Number(exAmount || 0);
+
+  if (shouldShowDiv(ex) && divineIcon && divineExValue){
+    valueEl.textContent = fmt2(ex / divineExValue);
+    if (iconEl) iconEl.src = divineIcon;
+  } else {
+    valueEl.textContent = fmt2(ex);
+    if (iconEl) iconEl.src = exaltIcon || "";
+  }
+}
+
 // totals show Ex/Div both
 function formatDual(exVal){
   const ex = Number(exVal || 0);
@@ -77,7 +106,7 @@ async function loadData(){
       section: x.section || "currency",
       name: cleanName(x.name),
       icon: x.icon || "",
-      amount: Number(x.amount ?? 0),   // already exalted in your new plan
+      amount: Number(x.amount ?? 0),   // stored in Exalted
       unit: x.unit || "",
       unitIcon: x.unitIcon || "",
     }));
@@ -87,18 +116,19 @@ async function loadData(){
     exaltIcon = data.baseIcon || "";
     const divRow = byName.get("divine orb");
     divineIcon = divRow?.icon || "";
-    // IMPORTANT: in your new approach, Divine Orb "amount" should be 1.00 in Exalted display page
-    // but we still store its exalted value as amount (Ex)
-    // Divine should have amount == 1.00 if values are "in Divine", so instead we set divineExValue using the row "Chaos Orb" etc...
-    // Here we assume: prices.json stores values in Exalted => then Divine Orb amount = X (Ex per Divine)
     divineExValue = divRow ? Number(divRow.amount || 0) : null;
 
-    setStatus(`Status: OK ✅ sections=${SECTIONS.length} items=${allItems.length} | 1 Div=${divineExValue ?? "?"} Ex`);
+    const updatedAt = data.updatedAt || "";
+    const updatedStr = updatedAt ? ` | last scrape=${fmtDateTime(updatedAt)}` : "";
+    setStatus(`Status: OK ✅ sections=${SECTIONS.length} items=${allItems.length} | 1 Div=${divineExValue ?? "?"} Ex${updatedStr}`);
 
     buildTabs();
     fillDatalist();
     renderMarket();
     loadState();
+
+    // sync cost fields once we know divineExValue
+    syncCostFields();
 
     // ensure at least one loot row
     if (!document.querySelector("#lootBody tr")) addLootRow();
@@ -165,7 +195,6 @@ function renderMarket(){
     const row = document.createElement("div");
     row.className = "market-row";
 
-    // ✅ add ⇄ between name and price
     row.innerHTML = `
       <div class="mLeft">
         ${it.icon ? `<img class="cIcon" src="${it.icon}" alt="">` : ""}
@@ -175,10 +204,14 @@ function renderMarket(){
       <div class="mArrow">⇄</div>
 
       <div class="mRight">
-        <span>${fmt2(it.amount)}</span>
-        ${exaltIcon ? `<img class="unitIcon" src="${exaltIcon}" alt="">` : ""}
+        <span class="mPriceVal">0.00</span>
+        <img class="unitIcon" alt="">
       </div>
     `;
+
+    const valEl = row.querySelector(".mPriceVal");
+    const icoEl = row.querySelector(".unitIcon");
+    setDualPriceDisplay(valEl, icoEl, it.amount);
 
     row.addEventListener("click", () => addLootRow(it.name));
     list.appendChild(row);
@@ -206,8 +239,8 @@ function addLootRow(prefillName = ""){
 
     <td>
       <div class="priceCell">
-        <span class="lootPrice">0.00</span>
-        ${exaltIcon ? `<img class="baseIcon" src="${exaltIcon}" alt="">` : ""}
+        <span class="lootPrice" data-ex="0">0.00</span>
+        <img class="baseIcon" alt="">
       </div>
     </td>
 
@@ -228,6 +261,7 @@ function addLootRow(prefillName = ""){
   const qtyInput  = tr.querySelector(".lootQty");
   const iconImg   = tr.querySelector(".lootIcon");
   const priceSpan = tr.querySelector(".lootPrice");
+  const unitImg   = tr.querySelector(".baseIcon");
 
   itemInput.value = prefillName;
 
@@ -242,8 +276,11 @@ function addLootRow(prefillName = ""){
       iconImg.style.display = "none";
     }
 
-    // prices shown in Exalted
-    priceSpan.textContent = fmt2(found ? found.amount : 0);
+    const ex = Number(found ? found.amount : 0);
+    priceSpan.dataset.ex = String(ex);
+
+    // display rule (Div for big values)
+    setDualPriceDisplay(priceSpan, unitImg, ex);
   }
 
   applyPrice();
@@ -298,7 +335,7 @@ function addManualRow(){
     <td>
       <div class="priceCell">
         <input class="manualPrice" type="number" value="0" min="0" step="0.01">
-        ${exaltIcon ? `<img class="baseIcon" src="${exaltIcon}" alt="">` : ""}
+        ${exaltIcon ? `<img class="baseIcon" src="${exaltIcon}" alt="">` : `<img class="baseIcon" alt="">`}
       </div>
     </td>
 
@@ -341,8 +378,41 @@ function addManualRow(){
   update();
 }
 
+// --- cost per map Ex/Div sync
+function syncCostFields(){
+  const exEl = document.getElementById("costPerMap");
+  const divEl = document.getElementById("costPerMapDiv");
+  if (!exEl || !divEl) return;
+
+  if (!divineExValue || divineExValue <= 0) {
+    // no conversion possible yet
+    return;
+  }
+
+  isSyncingCost = true;
+  if (lastEditedCost === "div"){
+    const div = Number(divEl.value || 0);
+    exEl.value = fmt2(div * divineExValue);
+  } else {
+    const ex = Number(exEl.value || 0);
+    divEl.value = fmt2(ex / divineExValue);
+  }
+  isSyncingCost = false;
+}
+
 function calcInvestEx(){
-  return num("maps") * num("costPerMap");
+  const maps = num("maps");
+  const exEl = document.getElementById("costPerMap");
+  const divEl = document.getElementById("costPerMapDiv");
+
+  const exCost = exEl ? Number(exEl.value || 0) : 0;
+  const divCost = divEl ? Number(divEl.value || 0) : 0;
+
+  let costEx = exCost;
+  if (lastEditedCost === "div" && divineExValue && divineExValue > 0){
+    costEx = divCost * divineExValue;
+  }
+  return maps * (Number(costEx) || 0);
 }
 
 function calcLootEx(){
@@ -354,8 +424,8 @@ function calcLootEx(){
       const p = Number(tr.querySelector(".manualPrice")?.value || 0);
       total += p * qty;
     } else {
-      const p = Number(tr.querySelector(".lootPrice")?.textContent || 0);
-      total += p * qty;
+      const ex = Number(tr.querySelector(".lootPrice")?.dataset?.ex || 0);
+      total += ex * qty;
     }
   });
   return total;
@@ -369,6 +439,56 @@ function recalcAll(){
   document.getElementById("totalInvest").innerHTML = formatDual(invest);
   document.getElementById("totalLoot").innerHTML = formatDual(loot);
   document.getElementById("gain").innerHTML = formatDual(gain);
+}
+
+function exportLootCSV(){
+  const rows = [];
+  document.querySelectorAll("#lootBody tr").forEach(tr => {
+    const item = (tr.querySelector(".lootItem")?.value || "").trim();
+    const qty = Number(tr.querySelector(".lootQty")?.value || 0);
+
+    let priceEx = 0;
+    if (tr.classList.contains("manualRow")){
+      priceEx = Number(tr.querySelector(".manualPrice")?.value || 0);
+    } else {
+      priceEx = Number(tr.querySelector(".lootPrice")?.dataset?.ex || 0);
+    }
+
+    if (!item && qty === 0 && priceEx === 0) return;
+
+    rows.push({
+      item,
+      qty,
+      priceEx,
+      totalEx: priceEx * qty
+    });
+  });
+
+  const header = ["Item","Qty","Price (Ex)","Total (Ex)"];
+  const escapeCSV = (s) => {
+    const str = String(s ?? "");
+    return /[",\n]/.test(str) ? `"${str.replace(/"/g,'""')}"` : str;
+  };
+
+  const csv = [
+    header.join(","),
+    ...rows.map(r => [
+      escapeCSV(r.item),
+      r.qty,
+      fmt2(r.priceEx),
+      fmt2(r.totalEx)
+    ].join(","))
+  ].join("\n");
+
+  const blob = new Blob([csv], { type:"text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `poe2_loot_${Date.now()}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 function saveState(){
@@ -387,6 +507,8 @@ function saveState(){
     search: document.getElementById("marketSearch")?.value ?? "",
     maps: document.getElementById("maps")?.value ?? "10",
     costPerMap: document.getElementById("costPerMap")?.value ?? "0",
+    costPerMapDiv: document.getElementById("costPerMapDiv")?.value ?? "0",
+    lastEditedCost,
     rows
   };
 
@@ -405,6 +527,8 @@ function loadState(){
 
     if (document.getElementById("maps")) document.getElementById("maps").value = s.maps ?? "10";
     if (document.getElementById("costPerMap")) document.getElementById("costPerMap").value = s.costPerMap ?? "0";
+    if (document.getElementById("costPerMapDiv")) document.getElementById("costPerMapDiv").value = s.costPerMapDiv ?? "0";
+    if (s.lastEditedCost) lastEditedCost = s.lastEditedCost;
 
     document.querySelectorAll(".tab").forEach(x => x.classList.toggle("active", x.dataset.tab === activeSection));
     renderMarket();
@@ -425,7 +549,6 @@ function loadState(){
           addLootRow(r.item || "");
           const last = body.lastElementChild;
           last.querySelector(".lootQty").value = r.qty ?? "0";
-          // price auto applied
         }
       });
     }
@@ -437,6 +560,8 @@ function resetAll(){
   localStorage.removeItem("poe2FarmState");
   document.getElementById("maps").value = "10";
   document.getElementById("costPerMap").value = "0";
+  document.getElementById("costPerMapDiv").value = "0";
+  lastEditedCost = "ex";
 
   document.getElementById("lootBody").innerHTML = "";
   addLootRow();
@@ -454,13 +579,26 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("marketSearch")?.addEventListener("input", () => { renderMarket(); saveState(); });
 
   document.getElementById("maps")?.addEventListener("input", () => { recalcAll(); saveState(); });
-  document.getElementById("costPerMap")?.addEventListener("input", () => { recalcAll(); saveState(); });
+
+  document.getElementById("costPerMap")?.addEventListener("input", () => {
+    if (isSyncingCost) return;
+    lastEditedCost = "ex";
+    syncCostFields();
+    recalcAll();
+    saveState();
+  });
+
+  document.getElementById("costPerMapDiv")?.addEventListener("input", () => {
+    if (isSyncingCost) return;
+    lastEditedCost = "div";
+    syncCostFields();
+    recalcAll();
+    saveState();
+  });
 
   document.getElementById("resetBtn")?.addEventListener("click", resetAll);
 
-  // ✅ IMPORTANT: we wrap handlers so no PointerEvent goes into addLootRow
-  document.getElementById("addRowBtn")?.addEventListener("click", () => addLootRow());
-  document.getElementById("addManualBtn")?.addEventListener("click", () => addManualRow());
+  document.getElementById("exportCsvBtn")?.addEventListener("click", exportLootCSV);
 
   loadData();
 });
