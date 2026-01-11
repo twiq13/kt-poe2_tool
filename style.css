@@ -470,4 +470,21 @@ a.resetBtn{
   opacity:.85;
 }
 
+.site-signature{
+  margin-top:12px;
+  padding:10px 12px;
+  background:#111;
+  border:1px solid #333;
+  border-radius:10px;
+  color:#9a9a9a;
+  font-size:12px;
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  align-items:center;
+}
+.site-signature a{ color:#cfcfcf; text-decoration:none; }
+.site-signature a:hover{ text-decoration:underline; }
+.site-signature .sep{ opacity:.5; }
+
 
