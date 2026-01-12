@@ -487,14 +487,20 @@ a.resetBtn{
 .site-signature a:hover{ text-decoration:underline; }
 .site-signature .sep{ opacity:.5; }
 
-/* Build Assistant button (WIP) - stacked under Reddit */
-.buildAssistantBtn{
-  top:60px;      /* push it below the Reddit button */
+/* Make the top-right buttons sit side-by-side */
+.redditBtn{
+  position:fixed;
+  top:18px;
   right:20px;
+  z-index:9999;
   background:#222;
   border:1px solid #444;
 }
-.buildAssistantBtn:hover{ background:#2f2f2f; }
+.redditBtn:hover{ background:#2f2f2f; }
 
+/* Place Build Assistant to the LEFT of Reddit */
+.buildAssistantBtn{
+  right:120px; /* adjust if needed depending on "Reddit" button width */
+}
 
 
