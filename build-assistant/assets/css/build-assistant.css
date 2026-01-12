@@ -1,331 +1,291 @@
 /* =========================================================
-   PoE2 Build Assistant - self-contained theme (dark)
-   Drop-in file: /assets/css/build-assistant.css
+   Build Assistant - aligned with PoE2 Loot Calculator theme
    ========================================================= */
 
 :root{
-  --bg: #1C1C1C;
-  --panel: #222;
-  --panel-2: #1b1b1b;
-  --border: #333;
-  --border-2: #444;
-  --text: #fff;
-  --muted: #bbb;
-  --muted-2: #9a9a9a;
+  --bg:#1C1C1C;
+  --panel:#222;
+  --panel2:#1b1b1b;
+  --border:#333;
+  --border2:#444;
 
-  --radius-lg: 12px;
-  --radius-md: 10px;
+  --text:#fff;
+  --muted:#bbb;
 
-  --gap-1: 8px;
-  --gap-2: 12px;
-  --gap-3: 16px;
+  --r12:12px;
+  --r10:10px;
+
+  --gap8:8px;
+  --gap12:12px;
+  --gap16:16px;
 }
 
-*{ box-sizing: border-box; }
+*{ box-sizing:border-box; }
 
 body{
-  background: var(--bg);
-  color: var(--text);
+  background:var(--bg);
+  color:var(--text);
   font-family: Arial, Helvetica, sans-serif;
-  margin: 0;
-  padding: 20px;
+  margin:0;
+  padding:20px;
 }
 
-h1{ margin: 0 0 12px 0; }
-h2{ margin: 0 0 10px 0; font-size: 16px; color: #ddd; }
-
-p{ margin: 0 0 14px 0; }
-
-.muted{
-  color: var(--muted);
-  font-size: 13px;
+/* ===== header bar like loot calc ===== */
+.header-bar{
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:14px;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:var(--r12);
+  padding:12px;
+  margin-bottom:14px;
 }
 
-.container{
-  max-width: 1200px;
-  margin: 0 auto;
+.header-left{
+  display:flex;
+  flex-direction:column;
+  gap:4px;
 }
 
-/* Header */
-header{
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 12px;
-  margin-bottom: 14px;
+.site-title{
+  font-size:26px;       /* BIG like the other page */
+  font-weight:800;
+  line-height:1.1;
 }
 
-.header-inner{
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--gap-2);
+.site-subtitle{
+  font-size:12px;
 }
 
-.brand{
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.header-right{
+  display:flex;
+  align-items:flex-end;
+  gap:10px;
 }
 
-.brand-title{
-  font-weight: 800;
-  font-size: 14px;
-  color: #fff;
-}
-
-.brand-sub{
-  font-size: 12px;
-  color: var(--muted);
-}
-
+/* ===== nav buttons in header (same vibe as tabs/buttons) ===== */
 .nav{
-  display: flex;
-  gap: var(--gap-1);
-  flex-wrap: wrap;
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
 }
 
 .nav-link{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 7px 10px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border-2);
-  background: var(--panel-2);
-  color: var(--text);
-  text-decoration: none;
+  padding:7px 10px;
+  border-radius:10px;
+  border:1px solid var(--border2);
+  background:var(--panel2);
+  color:#fff;
+  text-decoration:none;
+}
+.nav-link:hover{ background:#2a2a2a; }
+.nav-link.active{ border-color:#fff; }
+
+/* ===== main container like your other page (wide) ===== */
+.container{
+  max-width: 1400px; /* wider like Loot Calculator */
+  margin: 0 auto;
 }
 
-.nav-link:hover{ background: #2a2a2a; }
-.nav-link.active{ border-color: #fff; }
+/* Titles */
+.page-title{
+  font-size:34px; /* closer to your main page h1 scale */
+  font-weight:900;
+  margin:0 0 10px 0;
+}
 
-/* Card */
+h2{
+  margin:0 0 10px 0;
+  font-size:16px;
+  color:#ddd;
+}
+
+.muted{
+  color:var(--muted);
+  font-size:12px;
+}
+
+/* ===== cards ===== */
 .card{
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 12px;
-  margin-bottom: 14px;
+  background:var(--panel);
+  border:1px solid var(--border);
+  border-radius:var(--r12);
+  padding:12px;
+  margin-bottom:14px;
 }
 
-/* Controls */
+/* Inputs / buttons match */
 input, select, button{
-  background: var(--panel);
-  color: var(--text);
-  border: 1px solid var(--border-2);
-  border-radius: var(--radius-md);
-  padding: 9px 10px;
+  background:var(--panel);
+  color:#fff;
+  border:1px solid var(--border2);
+  border-radius:10px;
+  padding:9px 10px;
   font-family: inherit;
 }
 
-button{
-  cursor: pointer;
-}
-button:hover{
-  background: #2f2f2f;
-}
+button{ cursor:pointer; }
+button:hover{ background:#2f2f2f; }
 
 .btn{
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  white-space: nowrap;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  white-space:nowrap;
 }
-
 .btn.primary{
-  border-color: #fff;
+  border-color:#fff;
 }
 
-/* Rows / fields */
+/* rows */
 .row{
-  display: flex;
-  gap: var(--gap-2);
-  flex-wrap: wrap;
-  align-items: flex-end;
-  margin-top: 10px;
+  display:flex;
+  gap:12px;
+  flex-wrap:wrap;
+  align-items:flex-end;
+  margin-top:10px;
+}
+.row:first-of-type{ margin-top:0; }
+
+.row-tight{
+  align-items:center;
+  margin-top:8px;
 }
 
-.row:first-of-type{
-  margin-top: 0;
-}
-
-.field{
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
+/* fields like your loot calc field label */
 .field label{
-  font-size: 12px;
-  color: var(--muted);
+  display:block;
+  font-size:12px;
+  color:#bbb;
+  margin-bottom:6px;
 }
 
-.field select,
-.field input{
-  min-width: 220px;
-}
+.field select{ min-width: 220px; }
 
-.field.actions{
-  justify-content: flex-end;
-}
-
-.field.actions .btn{
-  min-width: 180px;
-}
-
-/* Checkbox */
+/* checkbox */
 .checkbox{
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: #ddd;
-  font-size: 13px;
-  user-select: none;
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  font-size:13px;
+  color:#ddd;
+  user-select:none;
 }
-
 .checkbox input{
-  width: 16px;
-  height: 16px;
-  padding: 0;
-  border-radius: 4px;
+  width:16px;
+  height:16px;
+  padding:0;
 }
 
+/* status */
 #status{
-  color: var(--muted-2);
-  font-size: 12px;
+  color:#9a9a9a;
+  font-size:12px;
 }
 
-/* Grid */
+/* 2 columns like your page spacing */
 .grid-2{
-  display: grid;
+  display:grid;
   grid-template-columns: 1fr 1fr;
-  gap: var(--gap-3);
+  gap:16px;
 }
 
-/* Lists */
+/* list results */
 .list{
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 8px;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-top:8px;
 }
 
 .result-item{
-  background: var(--panel-2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 10px 12px;
-  display: flex;
-  gap: 10px;
-  align-items: flex-start;
+  background:var(--panel2);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:10px 12px;
+  display:flex;
+  gap:10px;
+  align-items:flex-start;
 }
-
-.result-item:hover{
-  background: #262626;
-}
+.result-item:hover{ background:#262626; }
 
 .result-icon{
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: #141414;
-  flex: 0 0 auto;
+  width:34px;
+  height:34px;
+  border-radius:10px;
+  border:1px solid var(--border);
+  background:#141414;
+  flex:0 0 auto;
 }
 
 .result-title{
-  font-weight: 800;
-  color: #fff;
-  margin-bottom: 4px;
-  font-size: 14px;
+  font-weight:800;
+  font-size:14px;
+  margin-bottom:4px;
 }
 
 .result-meta{
-  color: var(--muted);
-  font-size: 12px;
-  line-height: 1.4;
+  color:#bbb;
+  font-size:12px;
+  line-height:1.4;
 }
 
 .badges{
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 6px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:6px;
 }
-
 .badge{
-  font-size: 11px;
-  color: #ddd;
-  border: 1px solid var(--border-2);
-  background: #1f1f1f;
-  border-radius: 999px;
-  padding: 3px 8px;
+  font-size:11px;
+  color:#ddd;
+  border:1px solid var(--border2);
+  background:#1f1f1f;
+  border-radius:999px;
+  padding:3px 8px;
 }
 
-/* Chips */
+/* chips */
 .chips{
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:10px;
 }
-
 .chip{
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid var(--border-2);
-  background: var(--panel-2);
-  color: #ddd;
-  border-radius: 999px;
-  padding: 5px 10px;
-  font-size: 12px;
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  border:1px solid var(--border2);
+  background:var(--panel2);
+  color:#ddd;
+  border-radius:999px;
+  padding:5px 10px;
+  font-size:12px;
 }
 
-/* Footer signature */
+/* signature (same style as your site-signature) */
 .site-signature{
-  margin-top: 12px;
-  padding: 10px 12px;
-  background: #111;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  color: var(--muted-2);
-  font-size: 12px;
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  align-items: center;
+  margin-top:12px;
+  padding:10px 12px;
+  background:#111;
+  border:1px solid var(--border);
+  border-radius:10px;
+  color:#9a9a9a;
+  font-size:12px;
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  align-items:center;
 }
+.site-signature a{ color:#cfcfcf; text-decoration:none; }
+.site-signature a:hover{ text-decoration:underline; }
+.site-signature .sep{ opacity:.5; }
 
-.site-signature a{
-  color: #cfcfcf;
-  text-decoration: none;
-}
-.site-signature a:hover{ text-decoration: underline; }
-
-.site-signature .sep{
-  opacity: .5;
-}
-
-/* A11y helper */
-.sr-only{
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-
-/* Responsive */
+/* responsive */
 @media (max-width: 900px){
-  .grid-2{ grid-template-columns: 1fr; }
-  .field select,
-  .field input{ min-width: 100%; }
-  .field.actions .btn{ min-width: 100%; }
+  .grid-2{ grid-template-columns:1fr; }
+  .field select{ min-width:100%; }
 }
