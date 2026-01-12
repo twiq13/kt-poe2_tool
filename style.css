@@ -1,5 +1,5 @@
 /* =========================================================
-   🎛 ICON SIZE CONTROL PANEL (CHANGE SIZES HERE)
+   ICON SIZE CONTROL PANEL
    ========================================================= */
 :root{
   --icon-total-size: 18px;
@@ -8,7 +8,7 @@
   --icon-loot-price-size: 18px;
   --icon-shadow: drop-shadow(0 0 2px rgba(0,0,0,.7));
 
-  /* ✅ CHANGE LOOT BG OPACITY HERE (0 → invisible, 1 → full) */
+  /* Change loot background opacity here (0 -> invisible, 1 -> full) */
   --loot-bg-opacity: 0.28;
 }
 
@@ -74,6 +74,7 @@ button:hover{ background:#2f2f2f; }
   display:flex;
   gap:12px;
   align-items:flex-end;
+  flex-wrap:wrap;
 }
 
 .totalBox{
@@ -99,7 +100,6 @@ button:hover{ background:#2f2f2f; }
   justify-content:flex-end;
 }
 
-/* Totals icons */
 .pIcon{
   width:var(--icon-total-size);
   height:var(--icon-total-size);
@@ -108,6 +108,14 @@ button:hover{ background:#2f2f2f; }
   vertical-align:middle;
 }
 
+.toggleBtn{
+  background:#222;
+  border:1px solid #444;
+  padding:10px 12px;
+  border-radius:10px;
+}
+.toggleBtn:hover{ background:#2f2f2f; }
+
 .resetBtn{
   background:#ff3b3b;
   border:1px solid #ff3b3b;
@@ -115,6 +123,21 @@ button:hover{ background:#2f2f2f; }
   border-radius:10px;
 }
 .resetBtn:hover{ background:#ff5a5a; }
+
+/* Header links (Reddit / Build Assistant) */
+.topLinkBtn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  text-decoration:none;
+  color:#fff;
+
+  background:#222;
+  border:1px solid #444;
+  border-radius:10px;
+  padding:10px 12px;
+}
+.topLinkBtn:hover{ background:#2f2f2f; }
 
 /* =========================================================
    MAIN LAYOUT
@@ -169,7 +192,6 @@ button:hover{ background:#2f2f2f; }
   padding:6px;
 }
 
-/* Market list row */
 .market-row{
   display:flex;
   justify-content:space-between;
@@ -209,12 +231,7 @@ button:hover{ background:#2f2f2f; }
   color:#ddd;
 }
 
-.cIcon{
-  width:var(--icon-market-size);
-  height:var(--icon-market-size);
-  filter:var(--icon-shadow);
-  display:block;
-}
+.cIcon,
 .unitIcon{
   width:var(--icon-market-size);
   height:var(--icon-market-size);
@@ -232,10 +249,10 @@ button:hover{ background:#2f2f2f; }
   border:1px solid #333;
   border-radius:12px;
   padding:12px;
+  padding-bottom:64px; /* space if you anchor something near bottom */
   overflow:hidden;
 }
 
-/* ✅ Background image on loot panel */
 .app::before{
   content:"";
   position:absolute;
@@ -243,12 +260,11 @@ button:hover{ background:#2f2f2f; }
   background-image:url("data/Vaal_Atziri_Cinematic1.png");
   background-size:cover;
   background-position:center;
-  opacity:var(--loot-bg-opacity); /* ✅ CHANGE OPACITY HERE */
+  opacity:var(--loot-bg-opacity);
   pointer-events:none;
   z-index:0;
 }
 
-/* Ensure content above background */
 .app > *{
   position:relative;
   z-index:1;
@@ -328,11 +344,10 @@ button:hover{ background:#2f2f2f; }
 }
 
 .lootQty{
-  width:50% !important; /* ✅ Qty input reduced */
+  width:50% !important;
   text-align:center;
 }
 
-/* ✅ Smaller + / − buttons (matching Add row "+") */
 .qtyBtn{
   width:26px;
   height:26px;
@@ -356,6 +371,7 @@ button:hover{ background:#2f2f2f; }
 /* Actions */
 .loot-actions{
   margin-top:12px;
+  margin-bottom:10px;
   display:flex;
   gap:10px;
 }
@@ -366,7 +382,6 @@ button:hover{ background:#2f2f2f; }
   margin-right:6px;
 }
 
-/* Delete button */
 .deleteBtn{
   background:transparent;
   border:none;
@@ -375,6 +390,22 @@ button:hover{ background:#2f2f2f; }
   cursor:pointer;
 }
 .deleteBtn:hover{ color:#ff7b7b; }
+
+/* If you later use an anchored export button, keep this class */
+.exportCsvBtn{
+  position:absolute;
+  left:50%;
+  transform:translateX(-50%);
+  bottom:12px;
+  z-index:2;
+
+  background:#222;
+  color:#fff;
+  border:1px solid #444;
+  border-radius:10px;
+  padding:9px 12px;
+}
+.exportCsvBtn:hover{ background:#2f2f2f; }
 
 /* =========================================================
    DARK SCROLLBARS
@@ -402,74 +433,8 @@ button:hover{ background:#2f2f2f; }
 }
 
 /* =========================================================
-   NEW: Reddit link button (same look as resetBtn)
+   FOOTER
    ========================================================= */
-a.resetBtn{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  text-decoration:none;
-  color:#fff;
-}
-
-/* =========================================================
-   NEW: Export CSV anchored bottom-center in Loot panel
-   ========================================================= */
-.app{
-  padding-bottom:64px; /* room for anchored button */
-}
-
-.exportCsvBtn{
-  position:absolute;
-  left:50%;
-  transform:translateX(-50%);
-  bottom:12px;
-  z-index:2;
-
-  background:#222;
-  color:#fff;
-  border:1px solid #444;
-  border-radius:10px;
-  padding:9px 12px;
-}
-
-.exportCsvBtn:hover{
-  background:#2f2f2f;
-}
-
-/* optional: avoid overlay with action buttons if needed */
-.loot-actions{
-  margin-bottom:10px;
-}
-
-/* Reddit button top-right like feedback */
-.redditBtn{
-  position:fixed;
-  top:18px;
-  right:20px;
-  z-index:9999;
-  background:#222;
-  border:1px solid #444;
-}
-.redditBtn:hover{ background:#2f2f2f; }
-
-/* Toggle button (same theme, not red) */
-.toggleBtn{
-  background:#222;
-  border:1px solid #444;
-  padding:10px 12px;
-  border-radius:10px;
-}
-.toggleBtn:hover{ background:#2f2f2f; }
-
-/* Footer signature */
-.site-signature{
-  margin-top:10px;
-  color:#9a9a9a;
-  font-size:12px;
-  opacity:.85;
-}
-
 .site-signature{
   margin-top:12px;
   padding:10px 12px;
@@ -486,21 +451,3 @@ a.resetBtn{
 .site-signature a{ color:#cfcfcf; text-decoration:none; }
 .site-signature a:hover{ text-decoration:underline; }
 .site-signature .sep{ opacity:.5; }
-
-/* Make the top-right buttons sit side-by-side */
-.redditBtn{
-  position:fixed;
-  top:18px;
-  right:20px;
-  z-index:9999;
-  background:#222;
-  border:1px solid #444;
-}
-.redditBtn:hover{ background:#2f2f2f; }
-
-/* Place Build Assistant to the LEFT of Reddit */
-.buildAssistantBtn{
-  right:120px; /* adjust if needed depending on "Reddit" button width */
-}
-
-
