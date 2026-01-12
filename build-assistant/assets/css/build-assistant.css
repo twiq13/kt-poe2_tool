@@ -289,3 +289,30 @@ button:hover{ background:#2f2f2f; }
   .grid-2{ grid-template-columns:1fr; }
   .field select{ min-width:100%; }
 }
+
+/* ===========================
+   Unique sections (grouping)
+   =========================== */
+.section-title{
+  margin: 12px 0 6px;
+  padding: 8px 10px;
+  background: #1b1b1b;
+  border: 1px solid #333;
+  border-radius: 10px;
+  font-weight: 800;
+  font-size: 12px;
+  color: #ddd;
+  letter-spacing: .2px;
+}
+
+.section-title small{
+  font-weight: 400;
+  color: #aaa;
+  margin-left: 8px;
+}
+
+.list{
+  max-height: 560px; /* comme ton autre page: plus lisible */
+  overflow: auto;
+  padding-right: 4px;
+}
